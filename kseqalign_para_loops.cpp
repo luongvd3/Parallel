@@ -96,7 +96,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 {
 	int probNum=0;
 	std::string alignmentHash="";
-	#pragma omp parallel for schedule(dynamic,1) shared(genes,probNum,alignmentHash) ordered num_threads(8) 
+	#pragma omp parallel for schedule(dynamic,1) shared(genes,probNum,alignmentHash) ordered num_threads(32) 
 	for(int i=1;i<k;i++){
 		for(int j=0;j<i;j++){
 			int localProNum = 0;
