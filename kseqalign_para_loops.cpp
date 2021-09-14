@@ -96,11 +96,11 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 {
 	int probNum=0;
 	std::string alignmentHash="";
-	#pragma omp parallel for schedule(dynamic,1) shared(genes,probNum,alignmentHash) ordered num_threads(16) 
+	#pragma omp parallel for schedule(dynamic,1) shared(genes,probNum,alignmentHash) ordered num_threads(8) 
 	for(int i=1;i<k;i++){
 		for(int j=0;j<i;j++){
 			int localProNum = 0;
-			#pragma omp ordered
+			#pragma omp critical
 			{
 				localProNum = probNum++;	
 			}
@@ -140,19 +140,16 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 			std::string align1hash = sw::sha512::calculate(align1);
 			std::string align2hash = sw::sha512::calculate(align2);
 			std::string problemhash = sw::sha512::calculate(align1hash.append(align2hash));
-			#pragma omp ordered
+			#pragma omp critical
 			{
 				alignmentHash=sw::sha512::calculate(alignmentHash.append(problemhash));
 			}
 			
 			// Uncomment for testing purposes
-			#pragma omp ordered
-			{
-				std::cout << penalties[localProNum] << std::endl;
-				std::cout << align1 << std::endl;
-				std::cout << align2 << std::endl;
-				std::cout << std::endl;
-			}
+			std::cout << penalties[localProNum] << std::endl;
+			std::cout << align1 << std::endl;
+			std::cout << align2 << std::endl;
+			std::cout << std::endl;
 			 
 		}
 	}
