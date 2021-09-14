@@ -85,11 +85,8 @@ int **new2d (int width, int height)
 	    exit(1);
 	}
 	dp[0] = dp0;
-
-	#pragma omp parallel for shared(dp) 
 	for (int i = 1; i < width; i++)
-
-	    dp[i] = dp[0] + height*i;
+	    dp[i] = dp[i-1] + height;
 
 	return dp;
 }
@@ -99,6 +96,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 {
 	int probNum=0;
 	std::string alignmentHash="";
+
 	#pragma omp parallel for schedule(guided, 1) shared(probNum,genes)
 	for(int i=1;i<k;i++){
 		for(int j=0;j<i;j++){
