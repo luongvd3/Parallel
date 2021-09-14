@@ -99,7 +99,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 {
 	int probNum=0;
 	std::string alignmentHash="";
-	#pragma omp parallel for (guided, 1) shared(probNum,genes) collapse(2) 
+	#pragma omp parallel for schedule(guided, 1) shared(probNum,genes) collapse(2) 
 	for(int i=1;i<k;i++){
 		for(int j=0;j<i;j++){
 			std::string gene1 = genes[i];
