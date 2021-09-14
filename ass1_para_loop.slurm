@@ -3,7 +3,7 @@
 #SBATCH --constraint=physg5 
 #SBATCH --time=2:00:00 
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32 
+#SBATCH --cpus-per-task=16 
 #SBATCH --mem=64G
 #SBATCH --job-name=ldtran_test_run
 
