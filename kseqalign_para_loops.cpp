@@ -152,7 +152,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 		std::string align1hash = sw::sha512::calculate(align1);
 		std::string align2hash = sw::sha512::calculate(align2);
 		std::string problemhash = sw::sha512::calculate(align1hash.append(align2hash));
-		#pragma omp critical (updateHash) hint(omp_sync_hint_uncontended)
+		#pragma omp critical (updateHash) hint(omp_sync_hint_speculative)
 		{
 			alignmentHash=sw::sha512::calculate(alignmentHash.append(problemhash));
 		}
