@@ -6,6 +6,7 @@
 #include <iostream>
 #include "sha512.hh"
 #include <omp.h>
+#include <bits/stdc++.h>
 
 using namespace std;
 
@@ -94,65 +95,68 @@ int **new2d (int width, int height)
 std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 	int *penalties)
 {
-	int probNum=0;
-	std::string alignmentHash="";
-	#pragma omp parallel for schedule(dynamic,1) shared(genes,probNum,alignmentHash) ordered num_threads(8) 
+	typedef::vector<tuple<int,int>> tuplesVector;
+	tuplesVector problems;
+
 	for(int i=1;i<k;i++){
 		for(int j=0;j<i;j++){
-			int localProNum = 0;
-			#pragma omp critical
-			{
-				localProNum = probNum++;	
-			}
-			
-			std::string gene1 = genes[i];
-			std::string gene2 = genes[j];
-			int m = gene1.length(); // length of gene1
-			int n = gene2.length(); // length of gene2
-			int l = m+n;
-			int xans[l+1], yans[l+1];
-			printf("\nLocal number is: %d\n",localProNum);
-			penalties[localProNum]=getMinimumPenalty(gene1,gene2,pxy,pgap,xans,yans);
-			// Since we have assumed the answer to be n+m long,
-			// we need to remove the extra gaps in the starting
-			// id represents the index from which the arrays
-			// xans, yans are useful
-			int id = 1;
-			int a;
-			for (a = l; a >= 1; a--)
-			{
-				if ((char)yans[a] == '_' && (char)xans[a] == '_')
-				{
-					id = a + 1;
-					break;
-				}
-			}
-			std::string align1="";
-			std::string align2="";
-			for (a = id; a <= l; a++)
-			{
-				align1.append(1,(char)xans[a]);
-			}
-			for (a = id; a <= l; a++)
-			{
-				align2.append(1,(char)yans[a]);
-			}
-			std::string align1hash = sw::sha512::calculate(align1);
-			std::string align2hash = sw::sha512::calculate(align2);
-			std::string problemhash = sw::sha512::calculate(align1hash.append(align2hash));
-			#pragma omp critical
-			{
-				alignmentHash=sw::sha512::calculate(alignmentHash.append(problemhash));
-			}
-			
-			// Uncomment for testing purposes
-			std::cout << penalties[localProNum] << std::endl;
-			std::cout << align1 << std::endl;
-			std::cout << align2 << std::endl;
-			std::cout << std::endl;
-			 
+			problems.push_back(tuple<int,int>(i,j));
 		}
 	}
+	printf("\nProblem size is: %d\n", (int)problems.size());
+	int probNum=0;
+	std::string alignmentHash="";
+	#pragma omp parallel for schedule(dynamic,1) shared(genes,probNum,alignmentHash) ordered num_threads(16) 
+	for(int i = 0; i < problems.size(); ++i) {
+		std::string gene1 = genes[get<0>(problems.at(i))];
+		std::string gene2 = genes[get<1>(problems.at(i))];
+		printf("\nProblem is: %d %d\n", get<0>(problems.at(i)),get<1>(problems.at(i)));
+		int m = gene1.length(); // length of gene1
+		int n = gene2.length(); // length of gene2
+		int l = m+n;
+		int xans[l+1], yans[l+1];
+		printf("\nLocal number is: %d\n",i);
+		penalties[i]=getMinimumPenalty(gene1,gene2,pxy,pgap,xans,yans);
+		// Since we have assumed the answer to be n+m long,
+		// we need to remove the extra gaps in the starting
+		// id represents the index from which the arrays
+		// xans, yans are useful
+		int id = 1;
+		int a;
+		for (a = l; a >= 1; a--)
+		{
+			if ((char)yans[a] == '_' && (char)xans[a] == '_')
+			{
+				id = a + 1;
+				break;
+			}
+		}
+		std::string align1="";
+		std::string align2="";
+		for (a = id; a <= l; a++)
+		{
+			align1.append(1,(char)xans[a]);
+		}
+		for (a = id; a <= l; a++)
+		{
+			align2.append(1,(char)yans[a]);
+		}
+		std::string align1hash = sw::sha512::calculate(align1);
+		std::string align2hash = sw::sha512::calculate(align2);
+		std::string problemhash = sw::sha512::calculate(align1hash.append(align2hash));
+		#pragma omp critical
+		{
+			alignmentHash=sw::sha512::calculate(alignmentHash.append(problemhash));
+		}
+		
+		// Uncomment for testing purposes
+		std::cout << penalties[i] << std::endl;
+		std::cout << align1 << std::endl;
+		std::cout << align2 << std::endl;
+		std::cout << std::endl;
+			
+	}
+	
 	return alignmentHash;
 }
 

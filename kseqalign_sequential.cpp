@@ -6,6 +6,7 @@
 #include <iostream>
 #include "sha512.hh"
 #include <omp.h>
+#include <bits/stdc++.h>
 
 using namespace std;
 
@@ -94,6 +95,8 @@ int **new2d (int width, int height)
 std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 	int *penalties)
 {
+	
+	
 	int probNum=0;
 	std::string alignmentHash="";
 	for(int i=1;i<k;i++){
