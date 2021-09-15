@@ -10,6 +10,8 @@
 
 using namespace std;
 
+
+
 std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap, int *penalties);
 int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans, int *yans);
 
@@ -35,6 +37,10 @@ int main(int argc, char **argv){
 	std::cin >> gapPenalty;
 	std::cin >> k;	
 	std::string genes[k];
+	setenv("OMP_PLACES", "{0},{1},{2},{3}", true);
+	setenv("OMP_PROC_BIND", "true", true);
+	
+	printf("%s", getenv("OMP_PLACES"));
 	for(int i=0;i<k;i++) std::cin >> genes[i];
 
 	int numPairs= k*(k-1)/2;
@@ -43,6 +49,8 @@ int main(int argc, char **argv){
 		
 	uint64_t start = GetTimeStamp ();
 
+	//setenv("OMP_PLACES", "{0,1,2,3},{4,5,6,7},{16,17,18,19},{20,21,22,23}", true);
+	//setenv("OMP_PLACES", "{0},{1},{2},{3}", true);
 	// return all the penalties and the hash of all allignments
 	std::string alignmentHash = getMinimumPenalties(genes,
 		k,misMatchPenalty, gapPenalty,
@@ -104,10 +112,10 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 		}
 	}
 	printf("\nProblem size is: %d\n", (int)problems.size());
-	int probNum=0;
 	std::string alignmentHash="";
-	#pragma omp parallel for schedule(dynamic,1) shared(genes,probNum,alignmentHash) ordered num_threads(16) 
+	#pragma omp parallel for schedule(guided,1) shared(genes,alignmentHash) num_threads(32) proc_bind(close)
 	for(int i = 0; i < problems.size(); ++i) {
+		printf("Place number is: %d",omp_get_num_places());
 		std::string gene1 = genes[get<0>(problems.at(i))];
 		std::string gene2 = genes[get<1>(problems.at(i))];
 		printf("\nProblem is: %d %d\n", get<0>(problems.at(i)),get<1>(problems.at(i)));
@@ -144,7 +152,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 		std::string align1hash = sw::sha512::calculate(align1);
 		std::string align2hash = sw::sha512::calculate(align2);
 		std::string problemhash = sw::sha512::calculate(align1hash.append(align2hash));
-		#pragma omp critical
+		#pragma omp critical (updateHash) hint(omp_sync_hint_uncontended)
 		{
 			alignmentHash=sw::sha512::calculate(alignmentHash.append(problemhash));
 		}
