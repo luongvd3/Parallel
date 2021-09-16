@@ -7,14 +7,15 @@
 #include "sha512.hh"
 #include <omp.h>
 #include <bits/stdc++.h>
+#include <numa.h>
 
 using namespace std;
 
 
-
 std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap, int *penalties);
 int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans, int *yans);
-
+//define the number of processor avaialble
+int p_number = 8;
 /*
 Examples of sha512 which returns a std::string
 sw::sha512::calculate("SHA512 of std::string") // hash of a string, or
@@ -37,10 +38,6 @@ int main(int argc, char **argv){
 	std::cin >> gapPenalty;
 	std::cin >> k;	
 	std::string genes[k];
-	setenv("OMP_PLACES", "{0},{1},{2},{3}", true);
-	setenv("OMP_PROC_BIND", "true", true);
-	
-	printf("%s", getenv("OMP_PLACES"));
 	for(int i=0;i<k;i++) std::cin >> genes[i];
 
 	int numPairs= k*(k-1)/2;
@@ -49,8 +46,6 @@ int main(int argc, char **argv){
 		
 	uint64_t start = GetTimeStamp ();
 
-	//setenv("OMP_PLACES", "{0,1,2,3},{4,5,6,7},{16,17,18,19},{20,21,22,23}", true);
-	//setenv("OMP_PLACES", "{0},{1},{2},{3}", true);
 	// return all the penalties and the hash of all allignments
 	std::string alignmentHash = getMinimumPenalties(genes,
 		k,misMatchPenalty, gapPenalty,
@@ -94,8 +89,10 @@ int **new2d (int width, int height)
 	    exit(1);
 	}
 	dp[0] = dp0;
-	for (int i = 1; i < width; i++)
-	    dp[i] = dp[i-1] + height;
+	#pragma omp parallel for shared(dp) num_threads(8) proc_bind(close)
+	for (int i = 1; i < width; i++){
+	    dp[i] = dp[0] + height*i;
+	};
 
 	return dp;
 }
@@ -103,68 +100,57 @@ int **new2d (int width, int height)
 std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 	int *penalties)
 {
-	typedef::vector<tuple<int,int>> tuplesVector;
-	tuplesVector problems;
-
+	
+	
+	int probNum=0;
+	std::string alignmentHash="";
 	for(int i=1;i<k;i++){
 		for(int j=0;j<i;j++){
-			problems.push_back(tuple<int,int>(i,j));
-		}
-	}
-	printf("\nProblem size is: %d\n", (int)problems.size());
-	std::string alignmentHash="";
-	#pragma omp parallel for schedule(static)shared(genes,alignmentHash,problems) num_threads(16) proc_bind(close)
-	for(int i = 0; i < problems.size(); ++i) {
-		printf("Place number is: %d",omp_get_num_places());
-		std::string gene1 = genes[get<0>(problems.at(i))];
-		std::string gene2 = genes[get<1>(problems.at(i))];
-		printf("\nProblem is: %d %d\n", get<0>(problems.at(i)),get<1>(problems.at(i)));
-		int m = gene1.length(); // length of gene1
-		int n = gene2.length(); // length of gene2
-		int l = m+n;
-		int xans[l+1], yans[l+1];
-		printf("\nLocal number is: %d\n",i);
-		penalties[i]=getMinimumPenalty(gene1,gene2,pxy,pgap,xans,yans);
-		// Since we have assumed the answer to be n+m long,
-		// we need to remove the extra gaps in the starting
-		// id represents the index from which the arrays
-		// xans, yans are useful
-		int id = 1;
-		int a;
-		for (a = l; a >= 1; a--)
-		{
-			if ((char)yans[a] == '_' && (char)xans[a] == '_')
+			std::string gene1 = genes[i];
+			std::string gene2 = genes[j];
+			int m = gene1.length(); // length of gene1
+			int n = gene2.length(); // length of gene2
+			int l = m+n;
+			int xans[l+1], yans[l+1];
+			penalties[probNum]=getMinimumPenalty(gene1,gene2,pxy,pgap,xans,yans);
+			// Since we have assumed the answer to be n+m long,
+			// we need to remove the extra gaps in the starting
+			// id represents the index from which the arrays
+			// xans, yans are useful
+			int id = 1;
+			int a;
+			for (a = l; a >= 1; a--)
 			{
-				id = a + 1;
-				break;
+				if ((char)yans[a] == '_' && (char)xans[a] == '_')
+				{
+					id = a + 1;
+					break;
+				}
 			}
-		}
-		std::string align1="";
-		std::string align2="";
-		for (a = id; a <= l; a++)
-		{
-			align1.append(1,(char)xans[a]);
-		}
-		for (a = id; a <= l; a++)
-		{
-			align2.append(1,(char)yans[a]);
-		}
-		std::string align1hash = sw::sha512::calculate(align1);
-		std::string align2hash = sw::sha512::calculate(align2);
-		std::string problemhash = sw::sha512::calculate(align1hash.append(align2hash));
-		#pragma omp critical (updateHash) hint(omp_sync_hint_contended)
-		{
+			std::string align1="";
+			std::string align2="";
+			for (a = id; a <= l; a++)
+			{
+				align1.append(1,(char)xans[a]);
+			}
+			for (a = id; a <= l; a++)
+			{
+				align2.append(1,(char)yans[a]);
+			}
+			std::string align1hash = sw::sha512::calculate(align1);
+			std::string align2hash = sw::sha512::calculate(align2);
+			std::string problemhash = sw::sha512::calculate(align1hash.append(align2hash));
 			alignmentHash=sw::sha512::calculate(alignmentHash.append(problemhash));
-		}
-		
-		// Uncomment for testing purposes
-		std::cout << penalties[i] << std::endl;
-		std::cout << align1 << std::endl;
-		std::cout << align2 << std::endl;
-		std::cout << std::endl;
 			
+			// Uncomment for testing purposes
+			//std::cout << penalties[probNum] << std::endl;
+			//std::cout << align1 << std::endl;
+			//std::cout << align2 << std::endl;
+			//std::cout << std::endl;
+
+			probNum++;
+		}
 	}
-	
 	return alignmentHash;
 }
 
@@ -185,29 +171,101 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 	memset (dp[0], 0, size);
 
 	// intialising the table
+	#pragma omp parallel for shared(dp) num_threads(8) proc_bind(close)
 	for (i = 0; i <= m; i++)
 	{
 		dp[i][0] = i * pgap;
 	}
+	#pragma omp parallel for shared(dp) num_threads(8) proc_bind(close)
 	for (i = 0; i <= n; i++)
 	{
 		dp[0][i] = i * pgap;
 	}
-
-	// calcuting the minimum penalty
-	for (i = 1; i <= m; i++)
+	for (int b = 1; b <= m; b=b+p_number)
 	{
-		for (j = 1; j <= n; j++)
+		int runRange = p_number-1;
+		if (b + p_number > m)
 		{
-			if (x[i - 1] == y[j - 1])
+			runRange = m - b;
+		}
+		int endIndex = b + runRange;
+			// calcuting the minimum penalty
+		// divide the matrix table into blocks and process sequentially the bare minimum elements required for parallel processing
+		int minimum_j = p_number - 1;
+		for (i = b; i <= endIndex; i++)
+		{
+			for (j = 1; minimum_j > 0 && j <= minimum_j; j++)
 			{
-				dp[i][j] = dp[i - 1][j - 1];
+				if (x[i - 1] == y[j - 1])
+				{
+					dp[i][j] = dp[i - 1][j - 1];
+				}
+				else
+				{
+					dp[i][j] = min3(dp[i - 1][j - 1] + pxy ,
+							dp[i - 1][j] + pgap ,
+							dp[i][j - 1] + pgap);
+				}
 			}
-			else
+			minimum_j--;
+			if (minimum_j == -1)
 			{
-				dp[i][j] = min3(dp[i - 1][j - 1] + pxy ,
-						dp[i - 1][j] + pgap ,
-						dp[i][j - 1] + pgap);
+				minimum_j = p_number - 1;
+			}
+			
+		}
+		
+		//parallel part
+		for ( j = p_number; j <=n ; j++)
+		{		
+			#pragma omp parallel for shared(dp,x,y) num_threads(1) proc_bind(close)
+			for (int l = b; l <= endIndex; l++)
+			{
+				int o = j;
+				o = o - (l-b);
+				if (x[l - 1] == y[o - 1])
+				{
+					dp[l][o] = dp[l - 1][o - 1];
+				}
+				else
+				{
+					
+					dp[l][o] = min3(dp[l - 1][o - 1] + pxy ,
+						dp[l - 1][o] + pgap ,
+						dp[l][o - 1] + pgap);
+				
+					
+				}
+			
+				
+			}
+			
+		}
+			
+		
+
+		
+		//sequential part calculate the remaining elements
+		minimum_j = 0;
+		for (i = b + 1; i <= endIndex; i++)
+		{
+			for (j = n - minimum_j; minimum_j < p_number-1 && j <= n; j++)
+			{
+				if (x[i - 1] == y[j - 1])
+				{
+					dp[i][j] = dp[i - 1][j - 1];
+				}
+				else
+				{
+					dp[i][j] = min3(dp[i - 1][j - 1] + pxy ,
+							dp[i - 1][j] + pgap ,
+							dp[i][j - 1] + pgap);
+				}
+			}
+			minimum_j++;
+			if (minimum_j == p_number)
+			{
+				minimum_j = 0;
 			}
 		}
 	}
