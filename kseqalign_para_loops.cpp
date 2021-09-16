@@ -113,7 +113,7 @@ std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap,
 	}
 	printf("\nProblem size is: %d\n", (int)problems.size());
 	std::string alignmentHash="";
-	#pragma omp parallel for sch edule(dynamic,1)shared(genes,alignmentHash,problems) num_threads(16) proc_bind(close)
+	#pragma omp parallel for schedule(static)shared(genes,alignmentHash,problems) num_threads(16) proc_bind(close)
 	for(int i = 0; i < problems.size(); ++i) {
 		printf("Place number is: %d",omp_get_num_places());
 		std::string gene1 = genes[get<0>(problems.at(i))];
