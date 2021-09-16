@@ -45,7 +45,7 @@ int main(int argc, char **argv){
 	int penalties[numPairs];
 		
 	uint64_t start = GetTimeStamp ();
-
+	printf("I'm here");
 	// return all the penalties and the hash of all allignments
 	std::string alignmentHash = getMinimumPenalties(genes,
 		k,misMatchPenalty, gapPenalty,
@@ -189,7 +189,7 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 			runRange = m - b;
 		}
 		int endIndex = b + runRange;
-			// calcuting the minimum penalty
+		// calcuting the minimum penalty
 		// divide the matrix table into blocks and process sequentially the bare minimum elements required for parallel processing
 		int minimum_j = p_number - 1;
 		for (i = b; i <= endIndex; i++)
@@ -218,7 +218,7 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 		//parallel part
 		for ( j = p_number; j <=n ; j++)
 		{		
-			#pragma omp parallel for shared(dp,x,y) num_threads(1) proc_bind(close)
+			#pragma omp parallel for shared(dp,x,y) num_threads(8) proc_bind(close)
 			for (int l = b; l <= endIndex; l++)
 			{
 				int o = j;
@@ -241,11 +241,8 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 			}
 			
 		}
-			
 		
-
-		
-		//sequential part calculate the remaining elements
+		//sequential part calculates the remaining elements
 		minimum_j = 0;
 		for (i = b + 1; i <= endIndex; i++)
 		{
