@@ -88,9 +88,9 @@ int **new2d (int width, int height)
 	    exit(1);
 	}
 	dp[0] = dp0;
-	#pragma omp parallel for shared(dp) num_threads(8) proc_bind(close)
+	//#pragma omp parallel for shared(dp) num_threads(8) proc_bind(spread)
 	for (int i = 1; i < width; i++){
-	    dp[i] = dp[0] + height*i;
+	    dp[i] = dp[i-1] + height;
 	};
 
 	return dp;
@@ -163,6 +163,7 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 	int m = x.length(); // length of gene1
 	int n = y.length(); // length of gene2
 	
+	
 	// table for storing optimal substructure answers
 	int **dp = new2d (m+1, n+1);
 	size_t size = m + 1;
@@ -170,12 +171,12 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 	memset (dp[0], 0, size);
 
 	// intialising the table
-	#pragma omp parallel for shared(dp) num_threads(8) proc_bind(close)
+	#pragma omp parallel for shared(dp) num_threads(8) proc_bind(spread)
 	for (i = 0; i <= m; i++)
 	{
 		dp[i][0] = i * pgap;
 	}
-	#pragma omp parallel for shared(dp) num_threads(8) proc_bind(close)
+	#pragma omp parallel for shared(dp) num_threads(8) proc_bind(spread)
 	for (i = 0; i <= n; i++)
 	{
 		dp[0][i] = i * pgap;
@@ -222,21 +223,21 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 		//parallel part
 		for ( j = p_number; j <=n ; j++)
 		{	
-			#pragma omp parallel for schedule(static) shared(dp,x,y,j) num_threads(8) proc_bind(spread) 
-			for (int l = b; l <= endIndex; l++)
+			#pragma omp parallel for schedule(static) shared(dp,x,y,j) private(i) num_threads(8) proc_bind(spread) 
+			for (i = b; i <= endIndex; i++)
 			{
 				int o = j;
-				o = o - (l-b);
-				if (x[l - 1] == y[o - 1])
+				o = o - (i-b);
+				if (x[i - 1] == y[o - 1])
 				{
-					dp[l][o] = dp[l - 1][o - 1];
+					dp[i][o] = dp[i - 1][o - 1];
 				}
 				else
 				{
 					
-					dp[l][o] = min3(dp[l - 1][o - 1] + pxy ,
-						dp[l - 1][o] + pgap ,
-						dp[l][o - 1] + pgap);
+					dp[i][o] = min3(dp[i - 1][o - 1] + pxy ,
+						dp[i - 1][o] + pgap ,
+						dp[i][o - 1] + pgap);
 				
 					
 				}
