@@ -14,8 +14,8 @@ using namespace std;
 
 std::string getMinimumPenalties(std::string *genes, int k, int pxy, int pgap, int *penalties);
 int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans, int *yans);
-//define the number of processor avaialble
-int p_number = 8;
+//define parallel processing size
+int p_number = 2048;
 /*
 Examples of sha512 which returns a std::string
 sw::sha512::calculate("SHA512 of std::string") // hash of a string, or
@@ -45,7 +45,6 @@ int main(int argc, char **argv){
 	int penalties[numPairs];
 		
 	uint64_t start = GetTimeStamp ();
-	printf("I'm here");
 	// return all the penalties and the hash of all allignments
 	std::string alignmentHash = getMinimumPenalties(genes,
 		k,misMatchPenalty, gapPenalty,
@@ -181,6 +180,8 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 	{
 		dp[0][i] = i * pgap;
 	}
+
+	
 	for (int b = 1; b <= m; b=b+p_number)
 	{
 		int runRange = p_number-1;
@@ -189,9 +190,11 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 			runRange = m - b;
 		}
 		int endIndex = b + runRange;
-		// calcuting the minimum penalty
+		// calculating the minimum penalty
 		// divide the matrix table into blocks and process sequentially the bare minimum elements required for parallel processing
-		int minimum_j = p_number - 1;
+		
+		int minimum_j = (p_number > n) ? n : p_number -1;
+		
 		for (i = b; i <= endIndex; i++)
 		{
 			for (j = 1; minimum_j > 0 && j <= minimum_j; j++)
@@ -210,15 +213,16 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 			minimum_j--;
 			if (minimum_j == -1)
 			{
-				minimum_j = p_number - 1;
+				minimum_j = (p_number > n) ? n : p_number -1;
 			}
 			
-		}
+		}	
+
 		
 		//parallel part
 		for ( j = p_number; j <=n ; j++)
-		{		
-			#pragma omp parallel for shared(dp,x,y) num_threads(8) proc_bind(close)
+		{	
+			#pragma omp parallel for schedule(static) shared(dp,x,y,j) num_threads(8) proc_bind(spread) 
 			for (int l = b; l <= endIndex; l++)
 			{
 				int o = j;
@@ -236,17 +240,17 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 				
 					
 				}
-			
-				
+		
 			}
 			
 		}
+		
 		
 		//sequential part calculates the remaining elements
 		minimum_j = 0;
 		for (i = b + 1; i <= endIndex; i++)
 		{
-			for (j = n - minimum_j; minimum_j < p_number-1 && j <= n; j++)
+			for (j = n - minimum_j;minimum_j < p_number-1 && j <= n; j++)
 			{
 				if (x[i - 1] == y[j - 1])
 				{
@@ -263,10 +267,14 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 			if (minimum_j == p_number)
 			{
 				minimum_j = 0;
+			} else if (minimum_j >= n)
+			{
+				minimum_j = n-1;
 			}
+			
 		}
-	}
-
+	}		
+	
 	// Reconstructing the solution
 	int l = n + m; // maximum possible length
 	
@@ -318,5 +326,6 @@ int getMinimumPenalty(std::string x, std::string y, int pxy, int pgap, int *xans
 	delete[] dp[0];
 	delete[] dp;
 	
+
 	return ret;
 }
