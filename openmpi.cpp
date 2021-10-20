@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <omp.h>
 #include<iostream>
 #include <stdio.h>
 #include<bits/stdc++.h>
@@ -51,8 +52,8 @@ int main(int argc, char** argv) {
     std::cin >> Y;
     int m = X.length(); 
     int n = Y.length();
-
-    MPI_Init(NULL,NULL);
+    int provided;
+    MPI_Init_thread(NULL,NULL,MPI_THREAD_FUNNELED,&provided);
     // Get the number of processes
     int world_size;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -147,6 +148,7 @@ int main(int argc, char** argv) {
                 local_start_point = start_point + quotient*rank + remain;
                 local_end_point = local_start_point +local_load;
             }
+            #pragma omp parallel for schedule(static) shared(X,Y,L) private(j) num_threads(2) 
             for (j=local_start_point; j<local_end_point; j++)
             {
                 if (Y[i-j-1] == X[j-1])
