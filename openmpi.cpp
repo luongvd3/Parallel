@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
                 local_start_point = start_point + quotient*rank + remain;
                 local_end_point = local_start_point +local_load;
             }
-            #pragma omp parallel for schedule(static) shared(X,Y,L) private(j) num_threads(2) 
+            #pragma omp parallel for schedule(static) shared(X,Y,L) private(j) num_threads(8) 
             for (j=local_start_point; j<local_end_point; j++)
             {
                 if (Y[i-j-1] == X[j-1])
